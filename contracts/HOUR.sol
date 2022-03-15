@@ -8,15 +8,15 @@ import "./libraries/Multicall.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 
-contract HourAi is Multicall, Ownable, ERC721A {
+contract HOURAI is Multicall, Ownable, ERC721A {
 
     string public baseURI;
 
     struct Config {
         uint256 maxBatchSize;
         uint256 maxSize;
-        uint256 startBlockOfWhiteListMint;
-        uint256 startBlockOfPublicSale;
+        uint256 startTimeOfWhiteListMint;
+        uint256 startTimeOfPublicSale;
         uint256 priceOfWhiteListMint;
         uint256 priceOfPublicSale;
     }
@@ -51,7 +51,7 @@ contract HourAi is Multicall, Ownable, ERC721A {
         config = config_;
         enable = true;
         ethReceiver = ethReceiver_;
-        require(config_.startBlockOfWhiteListMint > config_.startBlockOfPublicSale, "White List Mint First");
+        require(config_.startTimeOfWhiteListMint > config_.startTimeOfPublicSale, "White List Mint First");
     }
 
     function _baseURI() internal view override returns (string memory) {
@@ -94,12 +94,12 @@ contract HourAi is Multicall, Ownable, ERC721A {
     function mint(uint256 quantity) external payable {
         require(enable, "Not Enable");
         require(quantity > 0, "Quantity should be >0");
-        require(block.number >= config.startBlockOfWhiteListMint, "Not Start");
+        require(block.timestamp >= config.startTimeOfWhiteListMint, "Not Start");
         require(mintNum + quantity < config.maxSize, "Remain NFT Not Enough");
-        uint256 price = (block.number >= config.startBlockOfPublicSale) ? config.priceOfPublicSale : config.priceOfWhiteListMint;
+        uint256 price = (block.timestamp >= config.startTimeOfPublicSale) ? config.priceOfPublicSale : config.priceOfWhiteListMint;
         checkPayableAndRefundIfOver(quantity * price);
 
-        if (block.number < config.startBlockOfPublicSale) {
+        if (block.timestamp < config.startTimeOfPublicSale) {
             // time for white list mint
 
             // do not need to explitly check in 8.0
@@ -129,17 +129,17 @@ contract HourAi is Multicall, Ownable, ERC721A {
         enable = enable_;
     }
 
-    function modifyStartBlockOfWhiteListMint(uint256 startBlockOfWhiteListMint) external onlyOwner {
-        require(block.number < config.startBlockOfWhiteListMint, "White List Mint Has Started");
-        require(block.number <= startBlockOfWhiteListMint, "New Start Time Too Late");
-        require(startBlockOfWhiteListMint < config.startBlockOfPublicSale, "White List Mint First");
-        config.startBlockOfWhiteListMint = startBlockOfWhiteListMint;
+    function modifystartTimeOfWhiteListMint(uint256 startTimeOfWhiteListMint) external onlyOwner {
+        require(block.timestamp < config.startTimeOfWhiteListMint, "White List Mint Has Started");
+        require(block.timestamp <= startTimeOfWhiteListMint, "New Start Time Too Late");
+        require(startTimeOfWhiteListMint < config.startTimeOfPublicSale, "White List Mint First");
+        config.startTimeOfWhiteListMint = startTimeOfWhiteListMint;
     }
 
-    function modifyStartBlockOfPublicSale(uint256 startBlockOfPublicSale) external onlyOwner {
-        require(block.number < config.startBlockOfPublicSale, "Public Sale Has Started");
-        require(block.number <= startBlockOfPublicSale, "New Start Time Too Late");
-        require(config.startBlockOfWhiteListMint < startBlockOfPublicSale, "White List Mint First");
-        config.startBlockOfPublicSale = startBlockOfPublicSale;
+    function modifystartTimeOfPublicSale(uint256 startTimeOfPublicSale) external onlyOwner {
+        require(block.timestamp < config.startTimeOfPublicSale, "Public Sale Has Started");
+        require(block.timestamp <= startTimeOfPublicSale, "New Start Time Too Late");
+        require(config.startTimeOfWhiteListMint < startTimeOfPublicSale, "White List Mint First");
+        config.startTimeOfPublicSale = startTimeOfPublicSale;
     }
 }
