@@ -2,9 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./libraries/ERC721A.sol";
-
 import "./libraries/Multicall.sol";
-
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 
@@ -20,11 +18,6 @@ contract HOURAI is Multicall, Ownable, ERC721A {
         uint256 priceOfWhiteListMint;
         uint256 priceOfPublicSale;
     }
-
-    uint256 constant maxSizeOfA = 1100;
-    uint256 constant maxSizeOfB = 300;
-    uint256 constant maxSizeOfC = 100;
-    uint256 constant maxSizeOfWhiteListNum = 1500;
 
     uint256 public mintNum;
 
@@ -73,6 +66,7 @@ contract HOURAI is Multicall, Ownable, ERC721A {
         (bool success, ) = to.call{value: value}(new bytes(0));
         require(success, "STE");
     }
+
     function checkPayableAndRefundIfOver(uint256 totalPrice) private {
         require(msg.value >= totalPrice, "Need to send more ETH.");
         if (msg.value > totalPrice) {
