@@ -2,9 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./libraries/ERC721A.sol";
-
 import "./libraries/Multicall.sol";
-
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -20,11 +18,6 @@ contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
         uint256 priceOfWhiteListMint;
         uint256 priceOfPublicSale;
     }
-
-    uint256 constant maxSizeOfA = 1100;
-    uint256 constant maxSizeOfB = 300;
-    uint256 constant maxSizeOfC = 100;
-    uint256 constant maxSizeOfWhiteListNum = 1500;
 
     uint256 public mintNum;
 
