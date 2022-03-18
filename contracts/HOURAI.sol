@@ -6,6 +6,8 @@ import "./libraries/Multicall.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+import "hardhat/console.sol";
+
 contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
 
     string public baseURI;
@@ -44,7 +46,7 @@ contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
         config = config_;
         enable = true;
         ethReceiver = ethReceiver_;
-        require(config_.startTimeOfWhiteListMint > config_.startTimeOfPublicSale, "White List Mint First");
+        require(config_.startTimeOfWhiteListMint < config_.startTimeOfPublicSale, "White List Mint First");
     }
 
     function _baseURI() internal view override returns (string memory) {
@@ -88,7 +90,7 @@ contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
         require(enable, "Not Enable");
         require(quantity > 0, "Quantity should be >0");
         require(block.timestamp >= config.startTimeOfWhiteListMint, "Not Start");
-        require(mintNum + quantity < config.maxSize, "Remain NFT Not Enough");
+        require(mintNum + quantity <= config.maxSize, "Remain NFT Not Enough");
         uint256 price = (block.timestamp >= config.startTimeOfPublicSale) ? config.priceOfPublicSale : config.priceOfWhiteListMint;
         _checkPayableAndRefundIfOver(quantity * price);
 
@@ -102,8 +104,10 @@ contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
             // time for public sale mint
 
             uint256 saleNum = uint256(publicSaleNum[msg.sender]);
-            require(saleNum + quantity < 3, "Public Sale At Most 3 NFT");
+            require(saleNum + quantity <= 3, "Public Sale At Most 3 NFT");
+            publicSaleNum[msg.sender] = uint8(saleNum + quantity);
         }
+        mintNum += quantity;
         _mint721A(quantity, msg.sender);
     }
 
