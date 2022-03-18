@@ -6,9 +6,9 @@ import "./libraries/ERC721A.sol";
 import "./libraries/Multicall.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-
-contract HOURAI is Multicall, Ownable, ERC721A {
+contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
 
     string public baseURI;
 
@@ -58,7 +58,7 @@ contract HOURAI is Multicall, Ownable, ERC721A {
         return baseURI;
     }
 
-    function setBaseURI(string calldata newBaseURI) internal onlyOwner {
+    function setBaseURI(string calldata newBaseURI) external onlyOwner {
         baseURI = newBaseURI;
     }
 
@@ -73,7 +73,7 @@ contract HOURAI is Multicall, Ownable, ERC721A {
         (bool success, ) = to.call{value: value}(new bytes(0));
         require(success, "STE");
     }
-    function checkPayableAndRefundIfOver(uint256 totalPrice) private {
+    function _checkPayableAndRefundIfOver(uint256 totalPrice) private {
         require(msg.value >= totalPrice, "Need to send more ETH.");
         if (msg.value > totalPrice) {
             _safeTransferETH(msg.sender, msg.value - totalPrice);
@@ -91,13 +91,13 @@ contract HOURAI is Multicall, Ownable, ERC721A {
         }
     }
 
-    function mint(uint256 quantity) external payable {
+    function mint(uint256 quantity) external payable nonReentrant {
         require(enable, "Not Enable");
         require(quantity > 0, "Quantity should be >0");
         require(block.timestamp >= config.startTimeOfWhiteListMint, "Not Start");
         require(mintNum + quantity < config.maxSize, "Remain NFT Not Enough");
         uint256 price = (block.timestamp >= config.startTimeOfPublicSale) ? config.priceOfPublicSale : config.priceOfWhiteListMint;
-        checkPayableAndRefundIfOver(quantity * price);
+        _checkPayableAndRefundIfOver(quantity * price);
 
         if (block.timestamp < config.startTimeOfPublicSale) {
             // time for white list mint
@@ -116,7 +116,7 @@ contract HOURAI is Multicall, Ownable, ERC721A {
 
     // management interfaces
 
-    function collectEther() external {
+    function collectEther() external nonReentrant {
         require(msg.sender == ethReceiver, "Not Receiver");
         _safeTransferETH(msg.sender, address(this).balance);
     }
