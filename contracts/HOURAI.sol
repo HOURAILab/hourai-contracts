@@ -28,8 +28,14 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
 
     Config public config;
 
-    /// @dev 2 * remain + Int(isD)
-    mapping(address=>uint8) public whiteListRemainIsD;
+    uint8 constant TYPE_NOT_WHITELIST = 0;
+    uint8 constant TYPE_A = 1;
+    uint8 constant TYPE_B = 2;
+    uint8 constant TYPE_C = 3;
+    uint8 constant TYPE_D = 4;
+
+    /// @dev 8 * remain + Type
+    mapping(address=>uint8) public whiteListRemainType;
     mapping(address=>uint8) public publicSaleNum;
 
     bool public enable;
@@ -63,12 +69,17 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
         baseURI = newBaseURI;
     }
 
-    function setWhiteListAddress(address[] calldata addrList, uint8 sizePerAddr, uint8 isD) external onlyOwner {
-        require(sizePerAddr == 1 || sizePerAddr == 2 || sizePerAddr == 10, 'sizePerAddr error');
-        require(isD == 0 || isD == 1, 'isD: 0 or 1');
-        uint8 remainIsD = sizePerAddr * 2 + isD;
+    function setWhiteListAddress(address[] calldata addrList, uint8 whiteListType) external onlyOwner {
+        require(whiteListType > 0 && whiteListType < 5, 'whiteListType error');
+        uint8 sizePerAddr = 1;
+        if (whiteListType == TYPE_B) {
+            sizePerAddr = 2;
+        } else if (whiteListType == TYPE_C) {
+            sizePerAddr = 10;
+        }
+        uint8 remainType = sizePerAddr * 8 + whiteListType;
         for (uint256 i = 0; i < addrList.length; i ++) {
-            whiteListRemainIsD[addrList[i]] = remainIsD;
+            whiteListRemainType[addrList[i]] = remainType;
         }
     }
 
@@ -98,8 +109,8 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
         if (timestamp >= config.startTimeOfPublicSale) {
             return config.priceOfPublicSale;
         }
-        uint8 remainIsD = whiteListRemainIsD[user];
-        if (remainIsD % 2 == 1) {
+        uint8 remainType = whiteListRemainType[user];
+        if (remainType % 8 == TYPE_D) {
             return config.priceOfWhiteListMintD;
         }
         return config.priceOfWhiteListMintABC;
@@ -117,8 +128,8 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
             // time for white list mint
 
             // do not need to explitly check in 8.0
-            uint256 remainIsD = uint256(whiteListRemainIsD[msg.sender]) - quantity * 2;
-            whiteListRemainIsD[msg.sender] = uint8(remainIsD);
+            uint256 remainType = uint256(whiteListRemainType[msg.sender]) - quantity * 8;
+            whiteListRemainType[msg.sender] = uint8(remainType);
         } else {
             // time for public sale mint
 
