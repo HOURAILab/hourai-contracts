@@ -2,22 +2,24 @@
 pragma solidity ^0.8.0;
 
 import "./libraries/ERC721A.sol";
-import "./libraries/Multicall.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "hardhat/console.sol";
 
-contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
+contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
 
     string public baseURI;
 
     struct Config {
         uint256 maxBatchSize;
         uint256 maxSize;
+        uint256 maxMintSize;
+        uint256 maxPreserveSize;
         uint256 startTimeOfWhiteListMint;
         uint256 startTimeOfPublicSale;
-        uint256 priceOfWhiteListMint;
+        uint256 priceOfWhiteListMintABC;
+        uint256 priceOfWhiteListMintD;
         uint256 priceOfPublicSale;
     }
 
@@ -26,6 +28,7 @@ contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
     Config public config;
 
     mapping(address=>uint8) public whiteListRemain;
+    mapping(address=>bool) public whiteListIsD;
     mapping(address=>uint8) public publicSaleNum;
 
     bool public enable;
@@ -44,6 +47,7 @@ contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
         baseURI = baseURI_;
         mintNum = 0;
         config = config_;
+        config.maxPreserveSize = config_.maxSize - config_.maxMintSize;
         enable = true;
         ethReceiver = ethReceiver_;
         require(config_.startTimeOfWhiteListMint < config_.startTimeOfPublicSale, "White List Mint First");
@@ -57,10 +61,15 @@ contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
         baseURI = newBaseURI;
     }
 
-    function setWhiteListAddress(address[] calldata addrList, uint8 sizePerAddr) external onlyOwner {
+    function setWhiteListAddress(address[] calldata addrList, uint8 sizePerAddr, bool isD) external onlyOwner {
         require(sizePerAddr == 1 || sizePerAddr == 2 || sizePerAddr == 10);
         for (uint256 i = 0; i < addrList.length; i ++) {
             whiteListRemain[addrList[i]] = sizePerAddr;
+        }
+        if (isD) {
+            for (uint256 i = 0; i < addrList.length; i ++) {
+                whiteListIsD[addrList[i]] = true;
+            }
         }
     }
 
@@ -86,12 +95,22 @@ contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
         }
     }
 
+    function getPrice(address user, uint256 timestamp) public view returns(uint256) {
+        if (timestamp >= config.startTimeOfPublicSale) {
+            return config.priceOfPublicSale;
+        }
+        if (whiteListIsD[user]) {
+            return config.priceOfWhiteListMintD;
+        }
+        return config.priceOfWhiteListMintABC;
+    }
+
     function mint(uint256 quantity) external payable nonReentrant {
         require(enable, "Not Enable");
         require(quantity > 0, "Quantity should be >0");
         require(block.timestamp >= config.startTimeOfWhiteListMint, "Not Start");
-        require(mintNum + quantity <= config.maxSize, "Remain NFT Not Enough");
-        uint256 price = (block.timestamp >= config.startTimeOfPublicSale) ? config.priceOfPublicSale : config.priceOfWhiteListMint;
+        require(mintNum + quantity <= config.maxMintSize, "Remain NFT Not Enough");
+        uint256 price = getPrice(msg.sender, block.timestamp);
         _checkPayableAndRefundIfOver(quantity * price);
 
         if (block.timestamp < config.startTimeOfPublicSale) {
@@ -104,11 +123,40 @@ contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
             // time for public sale mint
 
             uint256 saleNum = uint256(publicSaleNum[msg.sender]);
-            require(saleNum + quantity <= 3, "Public Sale At Most 3 NFT");
+            require(saleNum + quantity <= 1, "Public Sale At Most 1 NFT");
             publicSaleNum[msg.sender] = uint8(saleNum + quantity);
         }
         mintNum += quantity;
         _mint721A(quantity, msg.sender);
+    }
+
+    function tokensOfUser(address user)
+        public
+        view
+        returns (uint256[] memory tokenIdList)
+    {
+        uint256 size = balanceOf(user);
+        if (size == 0) {
+            return tokenIdList;
+        }
+        tokenIdList = new uint256[](size);
+        uint256 numMintedSoFar = totalSupply();
+        uint256 tokenIdx = 0;
+        address currOwnershipAddr = address(0);
+        for (uint256 i = 0; i < numMintedSoFar; i++) {
+            if (tokenIdx == size) {
+                break;
+            }
+            TokenOwnership memory ownership = _ownerships[i];
+            if (ownership.addr != address(0)) {
+                currOwnershipAddr = ownership.addr;
+            }
+            if (currOwnershipAddr == user) {
+                tokenIdList[tokenIdx] = i;
+                tokenIdx ++;
+            }
+        }
+        return tokenIdList;
     }
 
     // management interfaces
@@ -116,6 +164,10 @@ contract HOURAI is ReentrancyGuard, Multicall, Ownable, ERC721A {
     function collectEther() external nonReentrant {
         require(msg.sender == ethReceiver, "Not Receiver");
         _safeTransferETH(msg.sender, address(this).balance);
+    }
+
+    function preserveMintFor(uint256 quantity, address recipient) external onlyOwner {
+        _mint721A(quantity, recipient);
     }
 
     function modifyEthReceiver(address _ethReceiver) external onlyOwner {
