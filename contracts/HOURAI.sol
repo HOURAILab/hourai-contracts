@@ -24,6 +24,7 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
     }
 
     uint256 public mintNum;
+    uint256 public preserveMintNum;
 
     Config public config;
 
@@ -46,6 +47,7 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
     ) ERC721A(name_, symbol_, config_.maxBatchSize, config_.maxSize) {
         baseURI = baseURI_;
         mintNum = 0;
+        preserveMintNum = 0;
         config = config_;
         config.maxPreserveSize = config_.maxSize - config_.maxMintSize;
         enable = true;
@@ -167,7 +169,9 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
     }
 
     function preserveMintFor(uint256 quantity, address recipient) external onlyOwner {
+        require(preserveMintNum + quantity <= config.maxPreserveSize, 'Too Many Preserved');
         _mint721A(quantity, recipient);
+        preserveMintNum += quantity;
     }
 
     function modifyEthReceiver(address _ethReceiver) external onlyOwner {
