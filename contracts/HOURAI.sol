@@ -28,8 +28,8 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
 
     Config public config;
 
-    mapping(address=>uint8) public whiteListRemain;
-    mapping(address=>bool) public whiteListIsD;
+    /// @dev 2 * remain + Int(isD)
+    mapping(address=>uint8) public whiteListRemainIsD;
     mapping(address=>uint8) public publicSaleNum;
 
     bool public enable;
@@ -63,15 +63,12 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
         baseURI = newBaseURI;
     }
 
-    function setWhiteListAddress(address[] calldata addrList, uint8 sizePerAddr, bool isD) external onlyOwner {
-        require(sizePerAddr == 1 || sizePerAddr == 2 || sizePerAddr == 10);
+    function setWhiteListAddress(address[] calldata addrList, uint8 sizePerAddr, uint8 isD) external onlyOwner {
+        require(sizePerAddr == 1 || sizePerAddr == 2 || sizePerAddr == 10, 'sizePerAddr error');
+        require(isD == 0 || isD == 1, 'isD: 0 or 1');
+        uint8 remainIsD = sizePerAddr * 2 + isD;
         for (uint256 i = 0; i < addrList.length; i ++) {
-            whiteListRemain[addrList[i]] = sizePerAddr;
-        }
-        if (isD) {
-            for (uint256 i = 0; i < addrList.length; i ++) {
-                whiteListIsD[addrList[i]] = true;
-            }
+            whiteListRemainIsD[addrList[i]] = remainIsD;
         }
     }
 
@@ -101,7 +98,8 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
         if (timestamp >= config.startTimeOfPublicSale) {
             return config.priceOfPublicSale;
         }
-        if (whiteListIsD[user]) {
+        uint8 remainIsD = whiteListRemainIsD[user];
+        if (remainIsD % 2 == 1) {
             return config.priceOfWhiteListMintD;
         }
         return config.priceOfWhiteListMintABC;
@@ -119,8 +117,8 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
             // time for white list mint
 
             // do not need to explitly check in 8.0
-            uint256 remain = uint256(whiteListRemain[msg.sender]) - quantity;
-            whiteListRemain[msg.sender] = uint8(remain);
+            uint256 remainIsD = uint256(whiteListRemainIsD[msg.sender]) - quantity * 2;
+            whiteListRemainIsD[msg.sender] = uint8(remainIsD);
         } else {
             // time for public sale mint
 
