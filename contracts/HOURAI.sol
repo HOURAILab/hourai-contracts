@@ -15,7 +15,7 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
         uint256 maxBatchSize;
         uint256 maxSize;
         uint256 maxMintSize;
-        uint256 maxPreserveSize;
+        uint256 maxReservedSize;
         uint256 startTimeOfWhiteListMint;
         uint256 startTimeOfPublicSale;
         uint256 priceOfWhiteListMintABC;
@@ -24,7 +24,7 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
     }
 
     uint256 public mintNum;
-    uint256 public preserveMintNum;
+    uint256 public reservedMintNum;
 
     Config public config;
 
@@ -53,9 +53,9 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
     ) ERC721A(name_, symbol_, config_.maxBatchSize, config_.maxSize) {
         baseURI = baseURI_;
         mintNum = 0;
-        preserveMintNum = 0;
+        reservedMintNum = 0;
         config = config_;
-        config.maxPreserveSize = config_.maxSize - config_.maxMintSize;
+        config.maxReservedSize = config_.maxSize - config_.maxMintSize;
         enable = true;
         ethReceiver = ethReceiver_;
         require(config_.startTimeOfWhiteListMint < config_.startTimeOfPublicSale, "White List Mint First");
@@ -177,10 +177,10 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
         _safeTransferETH(msg.sender, address(this).balance);
     }
 
-    function preserveMintFor(uint256 quantity, address recipient) external onlyOwner {
-        require(preserveMintNum + quantity <= config.maxPreserveSize, 'Too Many Preserved');
+    function reservedMintFor(uint256 quantity, address recipient) external onlyOwner {
+        require(reservedMintNum + quantity <= config.maxReservedSize, 'Too Many Reservedd');
         _mint721A(quantity, recipient);
-        preserveMintNum += quantity;
+        reservedMintNum += quantity;
     }
 
     function modifyEthReceiver(address _ethReceiver) external onlyOwner {
