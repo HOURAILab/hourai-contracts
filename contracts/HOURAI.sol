@@ -3,11 +3,10 @@ pragma solidity ^0.8.0;
 
 import "./libraries/ERC721A.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "hardhat/console.sol";
 
-contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
+contract HOURAI is Ownable, ERC721A {
 
     string public baseURI;
 
@@ -43,6 +42,11 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
     address ethReceiver;
 
     receive() external payable {}
+
+    modifier callerIsUser() {
+        require(tx.origin == msg.sender, "The caller is another contract");
+        _;
+    }
 
     constructor(
         string memory name_,
@@ -116,7 +120,7 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
         return config.priceOfWhiteListMintABC;
     }
 
-    function mint(uint256 quantity) external payable nonReentrant {
+    function mint(uint256 quantity) external payable callerIsUser {
         require(enable, "Not Enable");
         require(quantity > 0, "Quantity should be >0");
         require(block.timestamp >= config.startTimeOfWhiteListMint, "Not Start");
@@ -172,7 +176,7 @@ contract HOURAI is ReentrancyGuard, Ownable, ERC721A {
 
     // management interfaces
 
-    function collectEther() external nonReentrant {
+    function collectEther() external {
         require(msg.sender == ethReceiver, "Not Receiver");
         _safeTransferETH(msg.sender, address(this).balance);
     }
