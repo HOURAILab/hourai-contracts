@@ -31,6 +31,7 @@ contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Re
     /// @notice Used for ERC721 safeTransferFrom
     function onERC721Received(address, address, uint256, bytes memory) 
         public 
+        pure
         virtual 
         override 
         returns (bytes4) 
