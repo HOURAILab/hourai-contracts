@@ -39,7 +39,7 @@ contract HOURAI is Ownable, ERC721A {
 
     bool public enable;
 
-    address ethReceiver;
+    address public ethReceiver;
 
     receive() external payable {}
 
