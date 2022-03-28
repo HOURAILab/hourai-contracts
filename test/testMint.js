@@ -79,6 +79,16 @@ async function mint(hourai, miner, value, quantity) {
     return ok;
 }
 
+async function mintThroughCaller(caller, miner, value, quantity) {
+    let ok = true;
+    try {
+        await caller.connect(miner).mint(quantity, {value});
+    } catch (err) {
+        ok = false;
+    }
+    return ok;
+}
+
 async function whiteListRemain(hourai, addr) {
     const remainType = (await hourai.whiteListRemainType(addr)).toString();
     return stringDiv(remainType, '8');
@@ -118,6 +128,7 @@ describe("test uniswap price oracle", function () {
     var signer, minerA1, minerA2, minerA3, minerA4, minerA5, minerB1, minerB2, minerB3, minerC1, minerC2, miner1, miner2, miner3, receiver;
     var minerD1, minerD2, minerD3, minerD4, minerD5;
     var hourai;
+    var caller;
     var hugeAmount;
     var timestampStart;
     var startTimeOfWhiteListMint;
@@ -126,6 +137,8 @@ describe("test uniswap price oracle", function () {
     var priceOfWhiteListMintABC;
     var priceOfWhiteListMintD;
     var priceOfPublicSale;
+
+    var minerList;
 
     beforeEach(async function() {
 
@@ -184,11 +197,20 @@ describe("test uniswap price oracle", function () {
             receiver.address
         );
 
+        const callerFactory = await ethers.getContractFactory('HOURAICaller');
+        caller = await callerFactory.deploy(hourai.address);
+
         await hourai.setWhiteListAddress([minerA1.address, minerA2.address, minerA3.address, minerA4.address, minerA5.address], 1);
         await hourai.setWhiteListAddress([minerB1.address, minerB2.address, minerB3.address], 2);
-        await hourai.setWhiteListAddress([minerC1.address, minerC2.address], 3);
+        await hourai.setWhiteListAddress([minerC1.address, minerC2.address, caller.address], 3);
         await hourai.setWhiteListAddress([minerD1.address, minerD2.address, minerD3.address, minerD4.address, minerD5.address], 4);
         
+        minerList = [
+            miner1, miner2, miner3, 
+            minerA1, minerA2, minerA3, minerA4, minerA5,
+            minerB1, minerB2, minerB3, minerC1, minerC2,
+            minerD1, minerD2, minerD3, minerD4, minerD5,
+        ];
     });
 
     it("mint", async function() {
@@ -355,6 +377,29 @@ describe("test uniswap price oracle", function () {
         expect(await whiteListRemain(hourai, minerB3.address)).to.equal('0');
         expect(await publicSaleNum(hourai, minerB3.address)).to.equal('0');
 
+        // contract can not mint!
+        for (const miner of minerList) {
+            const whiteListRemainBefore = await whiteListRemain(hourai, miner.address);
+            let mintOk = await mintThroughCaller(caller, miner, priceOfPublicSale, 1);
+            expect(mintOk).to.equal(false);
+            mintOk = await mintThroughCaller(caller, miner, priceOfWhiteListMintABC, 1);
+            expect(mintOk).to.equal(false);
+            mintOk = await mintThroughCaller(caller, miner, priceOfWhiteListMintD, 1);
+            expect(mintOk).to.equal(false);
+            expect(await mintNum(hourai)).to.equal('8');
+            expect(await getBalance(hourai.address)).to.equal(totalEther);
+            {
+                const ownerOf = await owner(hourai, String(8));
+                expect(ownerOf.ok).to.equal(false);
+                expect(ownerOf.addr.toLowerCase()).to.equal('');
+            }
+            expect(await whiteListRemain(hourai, miner.address)).to.equal(whiteListRemainBefore);
+            expect(await publicSaleNum(hourai, miner.address)).to.equal('0');
+            expect(await whiteListRemain(hourai, caller.address)).to.equal('10');
+            expect(await publicSaleNum(hourai, caller.address)).to.equal('0');
+        }
+        
+
         const minerC1Ok_15 = await mint(hourai, minerC1, stringMul(priceOfPublicSale, 6), 6);
         expect(minerC1Ok_15).to.equal(true);
         expect(await mintNum(hourai)).to.equal('14');
@@ -510,12 +555,6 @@ describe("test uniswap price oracle", function () {
         expect(await whiteListRemain(hourai, miner2.address)).to.equal('0');
         expect(await publicSaleNum(hourai, miner2.address)).to.equal('0');
 
-        const minerList = [
-            miner1, miner2, miner3, 
-            minerA1, minerA2, minerA3, minerA4, minerA5,
-            minerB1, minerB2, minerB3, minerC1, minerC2,
-            minerD1, minerD2, minerD3, minerD4, minerD5,
-        ];
 
         for (const miner of minerList) {
             const whiteListRemainBefore = await whiteListRemain(hourai, miner.address);
@@ -545,6 +584,28 @@ describe("test uniswap price oracle", function () {
             }
             expect(await whiteListRemain(hourai, miner.address)).to.equal(whiteListRemainBefore);
             expect(await publicSaleNum(hourai, miner.address)).to.equal('0');
+        }
+
+        // contract can not mint!
+        for (const miner of minerList) {
+            const whiteListRemainBefore = await whiteListRemain(hourai, miner.address);
+            let mintOk = await mintThroughCaller(caller, miner, priceOfPublicSale, 1);
+            expect(mintOk).to.equal(false);
+            mintOk = await mintThroughCaller(caller, miner, priceOfWhiteListMintABC, 1);
+            expect(mintOk).to.equal(false);
+            mintOk = await mintThroughCaller(caller, miner, priceOfWhiteListMintD, 1);
+            expect(mintOk).to.equal(false);
+            expect(await mintNum(hourai)).to.equal('20');
+            expect(await getBalance(hourai.address)).to.equal(totalEther);
+            {
+                const ownerOf = await owner(hourai, String(20));
+                expect(ownerOf.ok).to.equal(false);
+                expect(ownerOf.addr.toLowerCase()).to.equal('');
+            }
+            expect(await whiteListRemain(hourai, miner.address)).to.equal(whiteListRemainBefore);
+            expect(await publicSaleNum(hourai, miner.address)).to.equal('0');
+            expect(await whiteListRemain(hourai, caller.address)).to.equal('10');
+            expect(await publicSaleNum(hourai, caller.address)).to.equal('0');
         }
 
         let hasMintNum = 20;
@@ -577,6 +638,28 @@ describe("test uniswap price oracle", function () {
             }
             expect(await whiteListRemain(hourai, miner.address)).to.equal(whiteListRemainBefore);
             expect(await publicSaleNum(hourai, miner.address)).to.equal('1');
+        }
+
+        // contract can not mint!
+        for (const miner of minerList) {
+            const whiteListRemainBefore = await whiteListRemain(hourai, miner.address);
+            let mintOk = await mintThroughCaller(caller, miner, priceOfPublicSale, 1);
+            expect(mintOk).to.equal(false);
+            mintOk = await mintThroughCaller(caller, miner, priceOfWhiteListMintABC, 1);
+            expect(mintOk).to.equal(false);
+            mintOk = await mintThroughCaller(caller, miner, priceOfWhiteListMintD, 1);
+            expect(mintOk).to.equal(false);
+            expect(await mintNum(hourai)).to.equal(String(hasMintNum));
+            expect(await getBalance(hourai.address)).to.equal(totalEther);
+            {
+                const ownerOf = await owner(hourai, String(hasMintNum));
+                expect(ownerOf.ok).to.equal(false);
+                expect(ownerOf.addr.toLowerCase()).to.equal('');
+            }
+            expect(await whiteListRemain(hourai, miner.address)).to.equal(whiteListRemainBefore);
+            expect(await publicSaleNum(hourai, miner.address)).to.equal('1');
+            expect(await whiteListRemain(hourai, caller.address)).to.equal('10');
+            expect(await publicSaleNum(hourai, caller.address)).to.equal('0');
         }
     });
     
