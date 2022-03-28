@@ -59,7 +59,7 @@ contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Re
 
     function transferTokens(uint256[] calldata hourAiId) external onlyOwner nonReentrant {
         for (uint256 i = 0; i < hourAiId.length; i ++) {
-            _transfer(address(this), recipient, hourAiId[i]);
+            IHOURAI(hourAi).safeTransferFrom(address(this), recipient, hourAiId[i]);
         }
     }
 
