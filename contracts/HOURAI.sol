@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./libraries/ERC721A.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 contract HOURAI is Ownable, ERC721A {
 
@@ -44,7 +44,7 @@ contract HOURAI is Ownable, ERC721A {
     receive() external payable {}
 
     modifier callerIsUser() {
-        require(tx.origin == msg.sender, "The caller is another contract");
+        require(tx.origin == msg.sender, "Contract Caller");
         _;
     }
 
@@ -62,7 +62,7 @@ contract HOURAI is Ownable, ERC721A {
         config.maxReservedSize = config_.maxSize - config_.maxMintSize;
         enable = true;
         ethReceiver = ethReceiver_;
-        require(config_.startTimeOfWhiteListMint < config_.startTimeOfPublicSale, "White List Mint First");
+        require(config_.startTimeOfWhiteListMint < config_.startTimeOfPublicSale, "Whitelist First");
     }
 
     function _baseURI() internal view override returns (string memory) {
@@ -74,7 +74,7 @@ contract HOURAI is Ownable, ERC721A {
     }
 
     function setWhiteListAddress(address[] calldata addrList, uint8 whiteListType) external onlyOwner {
-        require(whiteListType > 0 && whiteListType < 5, 'whiteListType error');
+        require(whiteListType > 0 && whiteListType < 5, 'whitelist Type Error');
         uint8 sizePerAddr = 1;
         if (whiteListType == TYPE_B) {
             sizePerAddr = 2;
@@ -91,8 +91,9 @@ contract HOURAI is Ownable, ERC721A {
         (bool success, ) = to.call{value: value}(new bytes(0));
         require(success, "STE");
     }
+
     function _checkPayableAndRefundIfOver(uint256 totalPrice) private {
-        require(msg.value >= totalPrice, "Need to send more ETH.");
+        require(msg.value >= totalPrice, "Need ETH");
         if (msg.value > totalPrice) {
             _safeTransferETH(msg.sender, msg.value - totalPrice);
         }
@@ -120,25 +121,24 @@ contract HOURAI is Ownable, ERC721A {
         return config.priceOfWhiteListMintABC;
     }
 
+    /// @notice Add the callerIsUser modifier to avoid potential attack by Multicall warpper or other malicious contracts.
     function mint(uint256 quantity) external payable callerIsUser {
         require(enable, "Not Enable");
-        require(quantity > 0, "Quantity should be >0");
+        require(quantity > 0, "Quantity > 0");
         require(block.timestamp >= config.startTimeOfWhiteListMint, "Not Start");
-        require(mintNum + quantity <= config.maxMintSize, "Remain NFT Not Enough");
+        require(mintNum + quantity <= config.maxMintSize, "MINT NFT O");
         uint256 price = getPrice(msg.sender, block.timestamp);
         _checkPayableAndRefundIfOver(quantity * price);
 
         if (block.timestamp < config.startTimeOfPublicSale) {
             // time for white list mint
-
             // do not need to explitly check in 8.0
             uint256 remainType = uint256(whiteListRemainType[msg.sender]) - quantity * 8;
             whiteListRemainType[msg.sender] = uint8(remainType);
         } else {
             // time for public sale mint
-
             uint256 saleNum = uint256(publicSaleNum[msg.sender]);
-            require(saleNum + quantity <= 1, "Public Sale At Most 1 NFT");
+            require(saleNum + quantity <= 1, "Public Sale Only 1 NFT");
             publicSaleNum[msg.sender] = uint8(saleNum + quantity);
         }
         mintNum += quantity;
@@ -182,7 +182,7 @@ contract HOURAI is Ownable, ERC721A {
     }
 
     function reservedMintFor(uint256 quantity, address recipient) external onlyOwner {
-        require(reservedMintNum + quantity <= config.maxReservedSize, 'Too Many Reservedd');
+        require(reservedMintNum + quantity <= config.maxReservedSize, 'Reserved Mint O');
         _mint721A(quantity, recipient);
         reservedMintNum += quantity;
     }
