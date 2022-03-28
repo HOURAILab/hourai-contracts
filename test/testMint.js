@@ -192,7 +192,7 @@ describe("test uniswap price oracle", function () {
         console.log(config);
 
         hourai = await houraiFactory.deploy(
-            "hourai", "hai", "www.baidu.com",
+            "hourai", "hai", "www.baidu.com/",
             config,
             receiver.address
         );

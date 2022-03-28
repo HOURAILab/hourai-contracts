@@ -110,7 +110,7 @@ contract HOURAI is Ownable, ERC721A {
         }
     }
 
-    function getPrice(address user, uint256 timestamp) public view returns(uint256) {
+    function getPrice(address user, uint256 timestamp) internal view returns(uint256) {
         if (timestamp >= config.startTimeOfPublicSale) {
             return config.priceOfPublicSale;
         }
@@ -195,14 +195,14 @@ contract HOURAI is Ownable, ERC721A {
         enable = enable_;
     }
 
-    function modifystartTimeOfWhiteListMint(uint256 startTimeOfWhiteListMint) external onlyOwner {
+    function modifyStartTimeOfWhiteListMint(uint256 startTimeOfWhiteListMint) external onlyOwner {
         require(block.timestamp < config.startTimeOfWhiteListMint, "White List Mint Has Started");
         require(block.timestamp <= startTimeOfWhiteListMint, "New Start Time Too Late");
         require(startTimeOfWhiteListMint < config.startTimeOfPublicSale, "White List Mint First");
         config.startTimeOfWhiteListMint = startTimeOfWhiteListMint;
     }
 
-    function modifystartTimeOfPublicSale(uint256 startTimeOfPublicSale) external onlyOwner {
+    function modifyStartTimeOfPublicSale(uint256 startTimeOfPublicSale) external onlyOwner {
         require(block.timestamp < config.startTimeOfPublicSale, "Public Sale Has Started");
         require(block.timestamp <= startTimeOfPublicSale, "New Start Time Too Late");
         require(config.startTimeOfWhiteListMint < startTimeOfPublicSale, "White List Mint First");
