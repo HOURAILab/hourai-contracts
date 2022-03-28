@@ -26,7 +26,7 @@ contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Re
     address public recipient;
     uint256 public nftNum;
 
-    mapping(uint256=>uint256) hourAiIds;
+    mapping(uint256=>uint256) public hourAiIds;
    
     constructor(address _hourAi, address _recipient) ERC721("HOURAI Stable", "HOURAI-STABLE") {
         hourAi = _hourAi;
@@ -50,7 +50,7 @@ contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Re
         nftNum ++;
         nftId = nftNum;
         hourAiIds[nftId] = hourAiId;
-        _mint(msg.sender, nftNum);
+        _mint(msg.sender, nftId);
     }
 
     function modifyRecipient(address _recipient) external onlyOwner {
