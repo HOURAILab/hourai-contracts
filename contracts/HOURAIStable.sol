@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import '@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol';
 import '@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol';
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import './libraries/Multicall.sol';
 
@@ -20,12 +21,18 @@ interface IHOURAI {
 
 }
 
-contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Receiver {
+contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Receiver, Ownable {
 
     address public hourAi;
+    address public recipient;
+    uint256 public nftNum;
+
+    mapping(uint256=>uint256) hourAiIds;
    
-    constructor(address _hourAi) ERC721("HOURAI STABLE", "hourai stable") {
+    constructor(address _hourAi, address _recipient) ERC721("HOURAI STABLE", "hourai stable") {
         hourAi = _hourAi;
+        recipient = _recipient;
+        nftNum = 0;
     }
 
     /// @notice Used for ERC721 safeTransferFrom
@@ -39,9 +46,22 @@ contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Re
         return this.onERC721Received.selector;
     }
 
-    function stake(uint256 hourAiId) external nonReentrant {
+    function stake(uint256 hourAiId) external nonReentrant returns(uint256 nftId) {
         IHOURAI(hourAi).safeTransferFrom(msg.sender, address(this), hourAiId);
-        _mint(msg.sender, hourAiId);
+        nftNum ++;
+        nftId = nftNum;
+        hourAiIds[nftId] = hourAiId;
+        _mint(msg.sender, nftNum);
+    }
+
+    function modifyRecipient(address _recipient) external onlyOwner {
+        recipient = _recipient;
+    }
+
+    function transferTokens(uint256[] calldata hourAiId) external onlyOwner nonReentrant {
+        for (uint256 i = 0; i < hourAiId.length; i ++) {
+            _transfer(address(this), recipient, hourAiId[i]);
+        }
     }
 
 }
