@@ -12,3 +12,8 @@ package-lock.json
 artifacts/
 
 
+node_modules/*
+package-lock.json
+.secret*
+cache/*
+artifacts/*
