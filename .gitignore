@@ -1,0 +1,14 @@
+.secret.js
+cache/
+scripts/.DS_Store
+scripts/*/.DS_Store
+.DS_Store
+*.swp
+*.swc
+*.swo
+
+node_modules/
+package-lock.json
+artifacts/
+
+
