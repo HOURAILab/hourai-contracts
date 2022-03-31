@@ -31,6 +31,7 @@ contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Re
     constructor(address _hourAi, address _recipient) ERC721("HOURAI Stable", "HOURAI-STABLE") {
         hourAi = _hourAi;
         recipient = _recipient;
+        require(_recipient != address(0), 'recipient cannot be zero!');
         nftNum = 0;
     }
 

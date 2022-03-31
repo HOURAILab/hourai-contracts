@@ -63,6 +63,7 @@ contract HOURAI is Ownable, ERC721A {
         enable = true;
         ethReceiver = ethReceiver_;
         require(config_.startTimeOfWhiteListMint < config_.startTimeOfPublicSale, "Whitelist First");
+        require(ethReceiver != address(0), 'eth receiver cannot be zero');
     }
 
     function _baseURI() internal view override returns (string memory) {
@@ -181,14 +182,14 @@ contract HOURAI is Ownable, ERC721A {
         _safeTransferETH(msg.sender, address(this).balance);
     }
 
+    function sendEther() external onlyOwner {
+        _safeTransferETH(ethReceiver, address(this).balance);
+    }
+
     function reservedMintFor(uint256 quantity, address recipient) external onlyOwner {
         require(reservedMintNum + quantity <= config.maxReservedSize, 'Reserved Mint O');
         _mint721A(quantity, recipient);
         reservedMintNum += quantity;
-    }
-
-    function modifyEthReceiver(address _ethReceiver) external onlyOwner {
-        ethReceiver = _ethReceiver;
     }
 
     function modifyEnable(bool enable_) external onlyOwner {
