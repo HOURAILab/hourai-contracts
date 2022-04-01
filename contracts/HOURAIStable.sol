@@ -26,6 +26,8 @@ contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Re
     address public recipient;
     uint256 public nftNum;
 
+    string public baseURI;
+    
     mapping(uint256=>uint256) public hourAiIds;
    
     constructor(address _hourAi, address _recipient) ERC721("HOURAI Stable", "HOURAI-STABLE") {
@@ -61,6 +63,14 @@ contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Re
         for (uint256 i = 0; i < hourAiId.length; i ++) {
             IHOURAI(hourAi).safeTransferFrom(address(this), recipient, hourAiId[i]);
         }
+    }
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
+    }
+
+    function setBaseURI(string calldata newBaseURI) external onlyOwner {
+        baseURI = newBaseURI;
     }
 
 }

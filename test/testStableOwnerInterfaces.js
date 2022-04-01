@@ -184,6 +184,19 @@ async function transferFrom(address, fromPk, fromAddr, toAddr, tokenId) {
     // console.log('txSent: ', txSent);
 }
 
+async function tokenURI(hourai, tokenId) {
+    return await hourai.tokenURI(tokenId);
+}
+
+async function setBaseURI(hourai, miner, newBaseURI) {
+    let ok = true;
+    try {
+        await hourai.connect(miner).setBaseURI(newBaseURI);
+    } catch(err) {
+        ok = false;
+    }
+    return ok;
+} 
 
 describe("test uniswap price oracle", function () {
 
@@ -345,6 +358,26 @@ describe("test uniswap price oracle", function () {
 
     });
 
+    it("base uri", async function() {
+
+        await stake(houraiStable, minerC1, 0);
+        await stake(houraiStable, minerC1, 1);
+        
+        console.log(await tokenURI(houraiStable, '1'));
+        console.log(await tokenURI(houraiStable, '2'));
+
+        const okMiner1 = await setBaseURI(houraiStable, miner1, 'www.google.com/');
+        expect(okMiner1).to.equal(false);
+
+        console.log(await tokenURI(houraiStable, '1'));
+        console.log(await tokenURI(houraiStable, '2'));
+
+        const okOwner = await setBaseURI(houraiStable, signer, 'www.sogou.com/');
+        expect(okOwner).to.equal(true);
+
+        console.log(await tokenURI(houraiStable, '1'));
+        console.log(await tokenURI(houraiStable, '2'));
+    });
 
     it("modify recipient and transfer and repeat mint", async function() {
 
