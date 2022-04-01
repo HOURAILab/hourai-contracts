@@ -31,7 +31,6 @@ contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Re
     constructor(address _hourAi, address _recipient) ERC721("HOURAI Stable", "HOURAI-STABLE") {
         hourAi = _hourAi;
         recipient = _recipient;
-        require(_recipient != address(0), 'recipient cannot be zero!');
         nftNum = 0;
     }
 
@@ -54,14 +53,11 @@ contract HOURAIStable is Multicall, ReentrancyGuard, ERC721Enumerable, IERC721Re
         _mint(msg.sender, nftId);
     }
 
-    function transferTokens(uint256[] calldata hourAiId) external onlyOwner nonReentrant {
-        for (uint256 i = 0; i < hourAiId.length; i ++) {
-            IHOURAI(hourAi).safeTransferFrom(address(this), recipient, hourAiId[i]);
-        }
+    function modifyRecipient(address _recipient) external onlyOwner {
+        recipient = _recipient;
     }
 
-    function collectTokens(uint256[] calldata hourAiId) external nonReentrant {
-        require(msg.sender == recipient, 'Not Receiver');
+    function transferTokens(uint256[] calldata hourAiId) external onlyOwner nonReentrant {
         for (uint256 i = 0; i < hourAiId.length; i ++) {
             IHOURAI(hourAi).safeTransferFrom(address(this), recipient, hourAiId[i]);
         }
