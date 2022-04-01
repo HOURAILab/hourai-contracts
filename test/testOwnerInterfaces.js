@@ -92,15 +92,7 @@ async function setBaseURI(hourai, miner, newBaseURI) {
     }
     return ok;
 } 
-async function modifyEthReceiver(hourai, owner, receiverAddress) {
-    let ok = true;
-    try {
-        await hourai.connect(owner).modifyEthReceiver(receiverAddress);
-    } catch(err) {
-        ok = false;
-    }
-    return ok;
-}
+
 async function collectEther(hourai, receiver) {
 
     let ok = true;
@@ -112,6 +104,36 @@ async function collectEther(hourai, receiver) {
     }
     const balanceAfter = (await ethers.provider.getBalance(receiver.address)).toString();
     return {ok, delta: stringMinus(balanceAfter, balanceBefore)};
+}
+
+async function sendEther(hourai, owner, receiver) {
+
+    let ok = true;
+    const balanceBefore = (await ethers.provider.getBalance(receiver.address)).toString();
+    try {
+        await hourai.connect(owner).sendEther();
+    } catch(err) {
+        // console.log(err);
+        ok = false;
+    }
+    const balanceAfter = (await ethers.provider.getBalance(receiver.address)).toString();
+    return {ok, delta: stringMinus(balanceAfter, balanceBefore)};
+}
+
+async function reservedMintFor(hourai, owner, recipientAddress, quantity) {
+
+    let ok = true;
+    try {
+        await hourai.connect(owner).reservedMintFor(quantity, recipientAddress);
+    } catch(err) {
+        // console.log(err);
+        ok = false;
+    }
+    return ok;
+}
+
+async function reservedMintNum(hourai) {
+    return (await hourai.reservedMintNum()).toString();
 }
 async function expectGt(a, b) {
     expect(BigNumber(a).gt(b)).to.equal(true);
@@ -198,7 +220,7 @@ async function owner(hourai, tokenId) {
         // console.log(err);
         ok = false;
     }
-    return {ok, addr}
+    return {ok, addr: addr.toLowerCase()}
 }
 
 async function mintNum(hourai) {
@@ -311,15 +333,14 @@ describe("test uniswap price oracle", function () {
         console.log(await tokenURI(hourai, '1'));
     });
 
-    it ("modify receiver and collect ether", async function() {
+    it ("collect ether", async function() {
         await ethers.provider.send('evm_setNextBlockTimestamp', [startTimeOfWhiteListMint + 18]);
 
         // phase 1
         await mint(hourai, minerC1, stringMul(priceOfWhiteListMintABC, 10), 10);
 
         expect(await getBalance(hourai.address)).to.equal('1200000000000000000');
-        await modifyEthReceiver(hourai, receiver1, receiver2.address);
-        await modifyEthReceiver(hourai, minerC1, receiver2.address);
+        
         expect((await getEthReceiver(hourai)).toLowerCase()).to.equal(receiver1.address.toLowerCase());
 
         const receiver2_1 = await collectEther(hourai, receiver2);
@@ -350,14 +371,11 @@ describe("test uniswap price oracle", function () {
         await mint(hourai, minerC2, stringMul(priceOfWhiteListMintABC, 10), 10);
 
         expect(await getBalance(hourai.address)).to.equal('1200000000000000000');
-        await modifyEthReceiver(hourai, signer, receiver2.address);
-        expect((await getEthReceiver(hourai)).toLowerCase()).to.equal(receiver2.address.toLowerCase());
-
-        const receiver1_2 = await collectEther(hourai, receiver1);
+        const receiver2_2 = await collectEther(hourai, receiver2);
 
         expect(await getBalance(hourai.address)).to.equal('1200000000000000000');
-        expect(receiver1_2.ok).to.equal(false);
-        expectGt('0', receiver1_2.delta);
+        expect(receiver2_2.ok).to.equal(false);
+        expectGt('0', receiver2_2.delta);
 
         const minerC1_2 = await collectEther(hourai, minerC1);
 
@@ -371,13 +389,189 @@ describe("test uniswap price oracle", function () {
         expect(signer_2.ok).to.equal(false);
         expectGt('0', signer_2.delta);
 
-        const receiver2_2 = await collectEther(hourai, receiver2);
+        const receiver1_2 = await collectEther(hourai, receiver1);
 
         expect(await getBalance(hourai.address)).to.equal('0');
-        expect(receiver2_2.ok).to.equal(true);
-        expectGt(receiver2_2.delta, '1190000000000000000');
+        expect(receiver1_2.ok).to.equal(true);
+        expectGt(receiver1_2.delta, '1190000000000000000');
+
+    });
 
 
+    it ("send ether", async function() {
+        await ethers.provider.send('evm_setNextBlockTimestamp', [startTimeOfWhiteListMint + 18]);
+
+        // phase 1
+        await mint(hourai, minerC1, stringMul(priceOfWhiteListMintABC, 10), 10);
+
+        expect(await getBalance(hourai.address)).to.equal('1200000000000000000');
+        
+        expect((await getEthReceiver(hourai)).toLowerCase()).to.equal(receiver1.address.toLowerCase());
+
+        const receiver2_1 = await sendEther(hourai, receiver2, receiver1);
+
+        expect(await getBalance(hourai.address)).to.equal('1200000000000000000');
+        expect(receiver2_1.ok).to.equal(false);
+        expect(receiver2_1.delta).to.equal('0');
+
+        const minerC1_1 = await sendEther(hourai, minerC1, receiver2);
+
+        expect(await getBalance(hourai.address)).to.equal('1200000000000000000');
+        expect(minerC1_1.ok).to.equal(false);
+        expect(minerC1_1.delta).to.equal('0');
+
+        const minerC2_1 = await sendEther(hourai, minerC2, minerC2);
+
+        expect(await getBalance(hourai.address)).to.equal('1200000000000000000');
+        expect(minerC2_1.ok).to.equal(false);
+        expectGt('0', minerC2_1.delta);
+
+        const signer_1 = await sendEther(hourai, signer, receiver1);
+
+        expect(await getBalance(hourai.address)).to.equal('0');
+        expect(signer_1.ok).to.equal(true);
+        expect(signer_1.delta).to.equal('1200000000000000000');
+
+        // phase 2
+        await mint(hourai, minerC3, stringMul(priceOfWhiteListMintABC, 10), 10);
+
+        expect(await getBalance(hourai.address)).to.equal('1200000000000000000');
+        
+        expect((await getEthReceiver(hourai)).toLowerCase()).to.equal(receiver1.address.toLowerCase());
+
+        const receiver2_2 = await sendEther(hourai, receiver2, receiver1);
+
+        expect(await getBalance(hourai.address)).to.equal('1200000000000000000');
+        expect(receiver2_2.ok).to.equal(false);
+        expect(receiver2_2.delta).to.equal('0');
+
+        const minerC1_2 = await sendEther(hourai, minerC1, receiver2);
+
+        expect(await getBalance(hourai.address)).to.equal('1200000000000000000');
+        expect(minerC1_2.ok).to.equal(false);
+        expect(minerC1_2.delta).to.equal('0');
+
+        const minerC2_2 = await sendEther(hourai, minerC2, minerC2);
+
+        expect(await getBalance(hourai.address)).to.equal('1200000000000000000');
+        expect(minerC2_2.ok).to.equal(false);
+        expectGt('0', minerC2_2.delta);
+
+        const signer_2 = await sendEther(hourai, signer, receiver1);
+
+        expect(await getBalance(hourai.address)).to.equal('0');
+        expect(signer_2.ok).to.equal(true);
+        expect(signer_2.delta).to.equal('1200000000000000000');
+
+    });
+
+    it ("reserved mint for", async function() {
+        await ethers.provider.send('evm_setNextBlockTimestamp', [startTimeOfWhiteListMint + 18]);
+
+        // phase 1
+        await mint(hourai, minerC1, stringMul(priceOfWhiteListMintABC, 10), 10);
+        await mint(hourai, minerC2, stringMul(priceOfWhiteListMintABC, 6), 6);
+
+        for (let idx = 0; idx < 10; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(true);
+            expect(ownerAddr).to.equal(minerC1.address.toLowerCase());
+        }
+
+        for (let idx = 10; idx < 16; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(true);
+            expect(ownerAddr).to.equal(minerC2.address.toLowerCase());
+        }
+
+        await reservedMintFor(hourai, signer, miner1.address, 25);
+        expect(await reservedMintNum(hourai)).to.equal('25');
+
+        for (let idx = 16; idx < 41; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(true);
+            expect(ownerAddr).to.equal(miner1.address.toLowerCase());
+        }
+        // other try to reserve
+        const okMiner2_1 = await reservedMintFor(hourai, miner2, miner3.address, 20);
+        expect(okMiner2_1).to.equal(false);
+        expect(await reservedMintNum(hourai)).to.equal('25');
+        const okMiner2_2 = await reservedMintFor(hourai, miner2, miner2.address, 21);
+        expect(okMiner2_2).to.equal(false);
+        expect(await reservedMintNum(hourai)).to.equal('25');
+
+        for (let idx = 41; idx < 100; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(false);
+            expect(ownerAddr).to.equal('');
+        }
+
+        await reservedMintFor(hourai, signer, miner3.address, 30);
+
+        await reservedMintFor(hourai, signer, minerC1.address, 30);
+        for (let idx = 41; idx < 71; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(true);
+            expect(ownerAddr).to.equal(miner3.address.toLowerCase());
+        }
+        for (let idx = 71; idx < 101; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(true);
+            expect(ownerAddr).to.equal(minerC1.address.toLowerCase());
+        }
+        expect(await reservedMintNum(hourai)).to.equal('85');
+
+        const tryReserveMoreForMiner2 = await reservedMintFor(hourai, signer, miner2.address, 516);
+        expect(tryReserveMoreForMiner2).to.equal(false);
+        const tryReserveMoreForMiner1 = await reservedMintFor(hourai, signer, miner1.address, 516);
+        expect(tryReserveMoreForMiner1).to.equal(false);
+        const tryReserveMoreForMiner3 = await reservedMintFor(hourai, signer, miner3.address, 516);
+        expect(tryReserveMoreForMiner3).to.equal(false);
+        const tryReserveMoreForMinerC1 = await reservedMintFor(hourai, signer, minerC1.address, 516);
+        expect(tryReserveMoreForMinerC1).to.equal(false);
+        const tryReserveMoreForMinerC2 = await reservedMintFor(hourai, signer, minerC2.address, 516);
+        expect(tryReserveMoreForMinerC2).to.equal(false);
+        const tryReserveMoreForMinerC3 = await reservedMintFor(hourai, signer, minerC3.address, 516);
+        expect(tryReserveMoreForMinerC3).to.equal(false);
+        expect(await reservedMintNum(hourai)).to.equal('85');
+
+
+        const reserveAllForMiner3 = await reservedMintFor(hourai, signer, miner1.address, 515);
+        expect(reserveAllForMiner3).to.equal(true);
+        expect(await reservedMintNum(hourai)).to.equal('600');
+        for (let idx = 101; idx < 616; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(true);
+            expect(ownerAddr).to.equal(miner1.address.toLowerCase());
+        }
+
+        //check before
+        for (let idx = 0; idx < 10; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(true);
+            expect(ownerAddr).to.equal(minerC1.address.toLowerCase());
+        }
+
+        for (let idx = 10; idx < 16; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(true);
+            expect(ownerAddr).to.equal(minerC2.address.toLowerCase());
+        }
+        for (let idx = 16; idx < 41; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(true);
+            expect(ownerAddr).to.equal(miner1.address.toLowerCase());
+        }
+        for (let idx = 41; idx < 71; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(true);
+            expect(ownerAddr).to.equal(miner3.address.toLowerCase());
+        }
+        for (let idx = 71; idx < 101; idx ++) {
+            const {ok, addr: ownerAddr} = await owner(hourai, idx);
+            expect(ok).to.equal(true);
+            expect(ownerAddr).to.equal(minerC1.address.toLowerCase());
+        }
     });
 
 
